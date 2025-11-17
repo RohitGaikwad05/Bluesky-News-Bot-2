@@ -1,0 +1,5 @@
+.env
+posted_news.txt
+__pycache__/
+*.pyc
+venv/

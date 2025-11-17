@@ -1,0 +1,9 @@
+feedparser
+atproto
+google-generativeai
+google-search-results
+streamlit
+requests
+pyngrok
+python-dotenv
+schedule
