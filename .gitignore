@@ -1,5 +1,33 @@
+# Environment files
 .env
-posted_news.txt
+*.env
+
+# Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
 venv/
+env/
+.venv/
+ENV/
+
+# Project-generated files
+posted_news.txt
+
+# OS files
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Streamlit
+.streamlit/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

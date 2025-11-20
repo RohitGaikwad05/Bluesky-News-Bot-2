@@ -1,4 +1,6 @@
 import streamlit as st
+from io import StringIO
+from contextlib import redirect_stdout
 
 # Import functions from your bot.py
 from bot import (
@@ -7,8 +9,13 @@ from bot import (
     get_latest_news,
     generate_bluesky_post,
     fetch_news_image,
+    schedule_custom_interval,
+    stop_schedule
 )
 
+# ===============================
+# STREAMLIT PAGE CONFIG
+# ===============================
 st.set_page_config(
     page_title="Bluesky News Bot",
     page_icon="📰",
@@ -17,22 +24,37 @@ st.set_page_config(
 
 st.title("📰 Bluesky Breaking News Bot")
 st.write(
-    "This app fetches the latest headline, summarizes it with Gemini, "
-    "gets an image via SerpAPI, and posts to your Bluesky account."
+    "This bot fetches the latest headline, summarizes with Gemini, "
+    "gets an image using SerpAPI, and posts it to Bluesky automatically."
 )
 
 st.divider()
 
-# --- Section: Preview next post (no posting) ---
-st.subheader("🔍 Preview Next News Post (won't publish)")
+
+# ===============================
+# FUNCTION: Capture Bot Logs
+# ===============================
+def capture_logs(func):
+    buffer = StringIO()
+    with redirect_stdout(buffer):
+        func()
+    return buffer.getvalue()
+
+
+# ===============================
+# PREVIEW SECTION
+# ===============================
+st.subheader("🔍 Preview Next News Post (No Posting)")
 
 if st.button("Fetch Latest News Preview"):
     article = get_latest_news()
+
     if not article:
-        st.error("No news found from RSS feed.")
+        st.error("No news found.")
     else:
         st.write("**Headline:**", article["title"])
         st.write("**Link:**", article["link"])
+
         if article["summary"]:
             st.write("**Summary:**")
             st.write(article["summary"])
@@ -44,66 +66,82 @@ if st.button("Fetch Latest News Preview"):
             st.write("### 📝 Generated Post Text")
             st.write(preview_post)
 
-            with st.spinner("Searching image with SerpAPI..."):
+            with st.spinner("Searching image..."):
                 img_url = fetch_news_image(article["title"])
 
             if img_url:
                 st.write("### 🖼 Image Preview")
                 st.image(img_url, caption="Top SerpAPI Image", use_container_width=True)
             else:
-                st.info("No image found for this headline.")
+                st.info("No image found.")
         else:
-            st.error("Gemini failed to generate content.")
+            st.error("Gemini failed to generate summary.")
 
 st.divider()
 
-# --- Section: Run bot and actually post ---
+
+# ===============================
+# RUN BOT + SHOW LOGS
+# ===============================
 st.subheader("🚀 Run Bot and Post to Bluesky")
 
-if st.button("Run Bot Now (Post Latest News)"):
-    with st.spinner("Running bot, posting to Bluesky..."):
-        run_bluesky_news_bot()
-    st.success("✅ Bot run finished. Check your Bluesky profile.")
+if st.button("Run Bot Now"):
+    st.info("Running bot... please wait ⏳")
+
+    with st.spinner("Posting to Bluesky..."):
+        logs = capture_logs(run_bluesky_news_bot)
+
+    st.success("Bot run completed!")
+
+    st.write("### 📜 Run Logs")
+    st.code(logs)
+
 
 st.divider()
 
-# --- Section: Posted news history ---
-st.subheader("🧾 Previously Posted Headlines")
 
-if st.button("Refresh Posted News List"):
+# ===============================
+# POSTED NEWS HISTORY
+# ===============================
+st.subheader("🧾 Posted Headlines")
+
+if st.button("Refresh History"):
     posted = load_posted_news()
     if posted:
-        st.write(f"Total posted headlines: **{len(posted)}**")
+        st.write(f"Total: **{len(posted)}**")
         for title in posted:
             st.write("- ", title)
     else:
-        st.info("No headlines recorded yet (posted_news.txt is empty).")
-
-st.caption("Built with Streamlit + Gemini + SerpAPI + Bluesky API 💙")
+        st.info("No posts yet.")
 
 st.divider()
-st.subheader("⏱️ Auto Post Scheduler")
 
-interval = st.number_input("Schedule Interval (in minutes)", min_value=1, max_value=360, value=60)
 
-# Always ensure that scheduler state is tracked in session
+# ===============================
+# AUTO-SCHEDULER
+# ===============================
+st.subheader("⏱️ Auto Posting Scheduler")
+
+interval = st.number_input(
+    "Interval (minutes):",
+    min_value=1,
+    max_value=360,
+    value=60
+)
+
 if "scheduler_running" not in st.session_state:
     st.session_state.scheduler_running = False
 
 if not st.session_state.scheduler_running:
     if st.button("Start Scheduler"):
-        from bot import schedule_custom_interval, stop_schedule
-        
-        # Stop any existing scheduler before starting new one
         stop_schedule()
         schedule_custom_interval(interval)
-        
         st.session_state.scheduler_running = True
-        st.success(f"🟢 Scheduler started: posting every {interval} minutes!")
+        st.success(f"Scheduler started — posting every {interval} minutes.")
 else:
     if st.button("Stop Scheduler"):
-        from bot import stop_schedule
-        
         stop_schedule()
         st.session_state.scheduler_running = False
-        st.warning("🔴 Scheduler stopped.")
+        st.warning("Scheduler stopped.")
+
+st.caption("Built with Streamlit + Gemini + SerpAPI + Bluesky API 💙")

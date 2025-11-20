@@ -1,9 +1,9 @@
+google-generativeai
+crewai
+crewai[tools]
 feedparser
 atproto
-google-generativeai
-google-search-results
-streamlit
 requests
-pyngrok
 python-dotenv
-schedule
+streamlit
+openai
